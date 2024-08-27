@@ -1,0 +1,34 @@
+name: Packer Build
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      PKR_VAR_image_tag: dev-PR#${{ github.event.pull_request.number }}
+      PKR_VAR_vultr_api_key: ${{ secrets.VULTR_API_KEY }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Packer
+        uses: hashicorp/setup-packer@v3
+
+      - name: Update and upgrade packages
+        run: sudo apt-get update && sudo apt-get upgrade
+        
+      - name: Install Ansible
+        run: sudo apt-get install -y ansible
+
+      - name: Packer Init
+        run: |
+          cd vultr && packer init main.pkr.hcl
+
+      - name: Packer Build
+        run: |
+          cd vultr && packer build main.pkr.hcl

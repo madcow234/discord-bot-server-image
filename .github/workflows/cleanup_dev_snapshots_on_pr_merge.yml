@@ -1,0 +1,31 @@
+name: Cleanup Snapshots on PR Merge
+
+on:
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  if_merged:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    env:
+      VULTR_API_KEY: ${{ secrets.VULTR_API_KEY }}
+    steps:
+      - name: Remove Snapshot(s)
+        run: |
+          # Install curl and jq if not already available
+          sudo apt-get update && sudo apt-get install -y curl jq
+
+          vultr_api="https://api.vultr.com/v2/snapshots"
+          pr_number=${{ github.event.pull_request.number }}
+          snapshot_desc="Discord Bot Server [dev-PR#$pr_number]"
+
+          # Fetch list of snapshots with matching description prefix
+          snapshots=$(curl -s -H "Authorization: Bearer $VULTR_API_KEY" "$vultr_api" | jq -r --arg prefix "$snapshot_desc" '.snapshots[] | select(.description | startswith($prefix)) | .id')
+
+          # Loop through each snapshot and delete it
+          for snapshot in $snapshots; do
+            curl -s -X DELETE -H "Authorization: Bearer $VULTR_API_KEY" "$vultr_api/$snapshot"
+            echo "Deleted snapshot: $snapshot"
+          done
