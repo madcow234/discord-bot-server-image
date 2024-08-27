@@ -1,0 +1,35 @@
+---
+- name: Configure Rocky Linux Server
+  hosts: all
+  become: yes
+  tasks:
+    - name: Update and upgrade all packages
+      ansible.builtin.yum:
+        name: "*"
+        state: latest
+        update_cache: yes
+
+    - name: Create a new user called discord-bot-server
+      ansible.builtin.user:
+        name: discord-bot-server
+        state: present
+        create_home: yes
+
+    - name: Add Docker repo
+      ansible.builtin.command: dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+    - name: Install Docker
+      ansible.builtin.yum:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-compose-plugin
+        state: present
+        update_cache: yes
+
+    - name: Enable Docker service
+      ansible.builtin.systemd:
+        name: docker
+        enabled: yes
+        state: stopped
