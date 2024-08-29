@@ -19,7 +19,7 @@ variable "vultr_api_key" {
 
 variable "image_tag" {
   type      = string
-  default   = "test"
+  default   = "dev"
 }
 
 source "vultr" "discord-bot-server" {
