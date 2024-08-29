@@ -19,7 +19,7 @@ jobs:
 
           vultr_api="https://api.vultr.com/v2/snapshots"
           pr_number=${{ github.event.pull_request.number }}
-          snapshot_desc="Discord Bot Server [dev-PR#$pr_number]"
+          snapshot_desc="Discord Bot Server [test-PR#$pr_number]"
 
           # Fetch list of snapshots with matching description prefix
           snapshots=$(curl -s -H "Authorization: Bearer $VULTR_API_KEY" "$vultr_api" | jq -r --arg prefix "$snapshot_desc" '.snapshots[] | select(.description | startswith($prefix)) | .id')

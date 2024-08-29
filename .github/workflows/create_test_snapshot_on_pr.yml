@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      PKR_VAR_image_tag: dev-PR#${{ github.event.pull_request.number }}
+      PKR_VAR_image_tag: test-PR#${{ github.event.pull_request.number }}
       PKR_VAR_vultr_api_key: ${{ secrets.VULTR_API_KEY }}
 
     steps:

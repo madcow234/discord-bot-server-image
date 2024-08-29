@@ -8,7 +8,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      PKR_VAR_image_tag: release-${{ github.event.release.tag_name }}
+      PKR_VAR_image_tag: prod-${{ github.event.release.tag_name }}
       PKR_VAR_vultr_api_key: ${{ secrets.VULTR_API_KEY }}
 
     steps:
