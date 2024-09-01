@@ -1,0 +1,31 @@
+name: Delete test snapshots on PR merge
+
+on:
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  delete_test_snapshots:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Remove Snapshot(s)
+        run: |
+          vultr_api_url="https://api.vultr.com/v2/snapshots"
+          auth_header="Authorization: Bearer ${{ secrets.VULTR_API_KEY }}"
+          pr_number=${{ github.event.pull_request.number }}
+          snapshot_desc="Discord Bot Server [test-PR#$pr_number]"
+
+          snapshots=$(curl -s -H "$auth_header" "$vultr_api_url" | jq -c --arg prefix "$snapshot_desc" '.snapshots[] |
+              select(.description | startswith($prefix)) | {id: .id, description: .description}')
+
+          # Loop through each snapshot and delete it
+          echo "$snapshots" | while IFS= read -r snapshot; do
+            snapshot_id=$(echo "$snapshot" | jq -r '.id')
+            snapshot_description=$(echo "$snapshot" | jq -r '.description')
+
+            curl -s -X DELETE -H "$auth_header" "$vultr_api_url/$snapshot_id"
+            echo "Deleted snapshot: $snapshot_description ($snapshot_id)"
+          done

@@ -1,4 +1,4 @@
-name: Packer Build
+name: Create test snapshot on PR
 
 on:
   pull_request:
@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  build:
+  create_test_snapshot:
     runs-on: ubuntu-latest
     env:
       PKR_VAR_image_tag: test-PR#${{ github.event.pull_request.number }}
@@ -16,14 +16,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install Ansible using pip
+        run: |
+          pip install --upgrade pip
+          pip install ansible
+
       - name: Set up Packer
         uses: hashicorp/setup-packer@v3
-
-      - name: Update and upgrade packages
-        run: sudo apt-get update && sudo apt-get upgrade
-        
-      - name: Install Ansible
-        run: sudo apt-get install -y ansible
 
       - name: Packer Init
         run: |
