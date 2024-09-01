@@ -26,10 +26,8 @@ jobs:
 
       - name: Packer Init
         run: |
-          source ansible-env/bin/activate
           cd vultr && packer init main.pkr.hcl
 
       - name: Packer Build
         run: |
-          source ansible-env/bin/activate
           cd vultr && packer build main.pkr.hcl
