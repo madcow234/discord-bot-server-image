@@ -1,11 +1,12 @@
-name: Packer Build
+name: Create prod snapshot on release
 
 on:
   release:
-    types: [ created ]
+    types:
+      - published
 
 jobs:
-  build:
+  create_prod_snapshot:
     runs-on: ubuntu-latest
     env:
       PKR_VAR_image_tag: prod-${{ github.event.release.tag_name }}
@@ -15,19 +16,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install Ansible using pip
+        run: |
+          pip install --upgrade pip
+          pip install ansible
+
       - name: Set up Packer
         uses: hashicorp/setup-packer@v3
 
-      - name: Update and upgrade packages
-        run: sudo apt-get update && sudo apt-get upgrade
-
-      - name: Install Ansible
-        run: sudo apt-get install -y ansible
-
       - name: Packer Init
         run: |
+          source ansible-env/bin/activate
           cd vultr && packer init main.pkr.hcl
 
       - name: Packer Build
         run: |
+          source ansible-env/bin/activate
           cd vultr && packer build main.pkr.hcl
