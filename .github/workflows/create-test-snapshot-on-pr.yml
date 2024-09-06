@@ -47,7 +47,6 @@ jobs:
 
       - name: Get Version Fingerprint
         run: |
-          echo "$PACKER_OUTPUT"
           VERSION_FINGERPRINT=$(echo "$PACKER_OUTPUT" | grep -oP 'Tracking build on HCP Packer with fingerprint "\K[^"]+')
           if [[ -z "$VERSION_FINGERPRINT" ]]; then
             echo "Error: Unable to extract version fingerprint"
