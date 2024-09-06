@@ -38,14 +38,16 @@ jobs:
         run: |
           cd vultr
           packer build main.pkr.hcl | tee packer-output.txt
-          echo "Packer output: $PACKER_OUTPUT"
+
+      - name: Get Version Fingerprint
+        run: |
           VERSION_FINGERPRINT=$(grep -oP 'Tracking build on HCP Packer with fingerprint "\K[^"]+' packer-output.txt)
           if [[ -z "$VERSION_FINGERPRINT" ]]; then
-            echo "Error: Unable to extract version fingerprint"
-            exit 1
+          echo "Error: Unable to extract version fingerprint"
+          exit 1
           else
-            echo "Version fingerprint: $VERSION_FINGERPRINT"
-            export VERSION_FINGERPRINT
+          echo "Version fingerprint: $VERSION_FINGERPRINT"
+          export VERSION_FINGERPRINT
           fi
 
       - name: Fetch Access Token
