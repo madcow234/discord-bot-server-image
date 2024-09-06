@@ -41,18 +41,20 @@ jobs:
           PACKER_OUTPUT=$(mktemp)
           packer build main.pkr.hcl | tee $PACKER_OUTPUT
           PACKER_OUTPUT=$(cat $PACKER_OUTPUT)
-          export PACKER_OUTPUT
+          echo "PACKER_OUTPUT<<EOF" >> $GITHUB_ENV
+          echo "$PACKER_OUTPUT" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Get Version Fingerprint
         run: |
           echo "$PACKER_OUTPUT"
           VERSION_FINGERPRINT=$(echo "$PACKER_OUTPUT" | grep -oP 'Tracking build on HCP Packer with fingerprint "\K[^"]+')
           if [[ -z "$VERSION_FINGERPRINT" ]]; then
-          echo "Error: Unable to extract version fingerprint"
-          exit 1
+            echo "Error: Unable to extract version fingerprint"
+            exit 1
           else
-          echo "Version fingerprint: $VERSION_FINGERPRINT"
-          export VERSION_FINGERPRINT
+            echo "Version fingerprint: $VERSION_FINGERPRINT"
+            echo "VERSION_FINGERPRINT=$VERSION_FINGERPRINT" >> $GITHUB_ENV
           fi
 
       - name: Fetch Access Token
@@ -69,7 +71,7 @@ jobs:
             exit 1
           else
             echo "HCP access token: $HCP_ACCESS_TOKEN"
-            export HCP_ACCESS_TOKEN
+            echo "HCP_ACCESS_TOKEN=$HCP_ACCESS_TOKEN" >> $GITHUB_ENV
           fi
           
       - name: Update Assigned Version of Development Channel
