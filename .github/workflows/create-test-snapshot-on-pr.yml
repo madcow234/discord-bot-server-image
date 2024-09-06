@@ -36,9 +36,10 @@ jobs:
 
       - name: Packer Build
         run: |
-          PACKER_OUTPUT=$(cd vultr && packer build main.pkr.hcl)
+          cd vultr
+          packer build main.pkr.hcl | tee packer-output.txt
           echo "Packer output: $PACKER_OUTPUT"
-          VERSION_FINGERPRINT=$(echo "$PACKER_OUTPUT" | grep -oP 'Tracking build on HCP Packer with fingerprint "\K[^"]+')
+          VERSION_FINGERPRINT=$(grep -oP 'Tracking build on HCP Packer with fingerprint "\K[^"]+' packer-output.txt)
           if [[ -z "$VERSION_FINGERPRINT" ]]; then
             echo "Error: Unable to extract version fingerprint"
             exit 1
