@@ -36,8 +36,7 @@ jobs:
 
       - name: Packer Build
         run: |
-          cd vultr
-          packer build main.pkr.hcl | tee packer-output.txt
+          cd vultr && packer build main.pkr.hcl | tee packer-output.txt
 
       - name: Get Version Fingerprint
         run: |
