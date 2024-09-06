@@ -16,7 +16,7 @@ jobs:
       HCP_ORGANIZATION_ID: ${{ secrets.HCP_ORGANIZATION_ID }}
       HCP_PROJECT_ID: ${{ secrets.HCP_PROJECT_ID }}
       HCP_PKR_BUCKET: discord-bot-server
-      HCP_PKR_CHANNEL: development
+      HCP_PKR_CHANNEL: testing
 
     steps:
       - name: Checkout code
