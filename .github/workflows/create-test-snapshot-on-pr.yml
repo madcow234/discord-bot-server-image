@@ -8,6 +8,15 @@ on:
 jobs:
   create_test_snapshot:
     runs-on: ubuntu-latest
+    env:
+      PKR_VAR_image_tag: test-PR#${{ github.event.pull_request.number }}
+      PKR_VAR_vultr_api_key: ${{ secrets.VULTR_API_KEY }}
+      HCP_CLIENT_ID: ${{ secrets.HCP_CLIENT_ID }}
+      HCP_CLIENT_SECRET: ${{ secrets.HCP_CLIENT_SECRET }}
+      HCP_ORGANIZATION_ID: ${{ secrets.HCP_ORGANIZATION_ID }}
+      HCP_PROJECT_ID: ${{ secrets.HCP_PROJECT_ID }}
+      HCP_PKR_BUCKET: discord-bot-server
+      HCP_PKR_CHANNEL: development
 
     steps:
       - name: Checkout code
@@ -27,8 +36,6 @@ jobs:
 
       - name: Packer Build
         run: |
-          PKR_VAR_image_tag=test-PR#${{ github.event.pull_request.number }}
-          PKR_VAR_vultr_api_key=${{ secrets.VULTR_API_KEY }}
           cd vultr && PACKER_OUTPUT=$(packer build main.pkr.hcl)
           VERSION_FINGERPRINT=$(echo "$PACKER_OUTPUT" | grep -oP 'Tracking build on HCP Packer with fingerprint "\K[^"]+')
           if [[ -z "$VERSION_FINGERPRINT" ]]; then
@@ -41,8 +48,6 @@ jobs:
 
       - name: Fetch Access Token
         run: |
-          HCP_CLIENT_ID=${{ secrets.HCP_CLIENT_ID }}
-          HCP_CLIENT_SECRET=${{ secrets.HCP_CLIENT_SECRET }}
           RESPONSE=$(curl --silent --location "https://auth.idp.hashicorp.com/oauth2/token" \
             --header "Content-Type: application/x-www-form-urlencoded" \
             --data-urlencode "client_id=$HCP_CLIENT_ID" \
@@ -60,10 +65,6 @@ jobs:
           
       - name: Update Assigned Version of Development Channel
         run: |
-          HCP_ORGANIZATION_ID=${{ secrets.HCP_ORGANIZATION_ID }}
-          HCP_PROJECT_ID=${{ secrets.HCP_PROJECT_ID }}
-          HCP_PKR_BUCKET=discord-bot-server
-          HCP_PKR_CHANNEL=development
           curl --location -X PATCH "https://api.cloud.hashicorp.com/packer/2023-01-01/organizations/$HCP_ORGANIZATION_ID/projects/$HCP_PROJECT_ID/buckets/$HCP_PKR_BUCKET/channels/$HCP_PKR_CHANNEL" \
             --header "Authorization: Bearer $HCP_ACCESS_TOKEN" \
             --header "Content-Type: application/json" \
