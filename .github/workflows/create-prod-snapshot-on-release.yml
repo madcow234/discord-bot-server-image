@@ -8,9 +8,6 @@ on:
 jobs:
   create_prod_snapshot:
     runs-on: ubuntu-latest
-    env:
-      PKR_VAR_image_tag: prod-${{ github.event.release.tag_name }}
-      PKR_VAR_vultr_api_key: ${{ secrets.VULTR_API_KEY }}
 
     steps:
       - name: Checkout code
@@ -30,4 +27,6 @@ jobs:
 
       - name: Packer Build
         run: |
+          PKR_VAR_image_tag=prod-${{ github.event.release.tag_name }}
+          PKR_VAR_vultr_api_key=${{ secrets.VULTR_API_KEY }}
           cd vultr && packer build main.pkr.hcl
