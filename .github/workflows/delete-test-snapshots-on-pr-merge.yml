@@ -36,12 +36,12 @@ jobs:
           snapshots_to_delete=$(echo "$snapshots_sorted" | jq -c '.[0:-1]')
 
           # Loop through each snapshot (except the most recent) and delete it
-          echo "$snapshots_to_delete" | while IFS= read -r snapshot; do
+          echo "$snapshots_to_delete" | jq -c '.[]' | while IFS= read -r snapshot; do
             snapshot_id=$(echo "$snapshot" | jq -r '.id')
             snapshot_description=$(echo "$snapshot" | jq -r '.description')
-
+          
             curl -s -X DELETE -H "$auth_header" "$vultr_api_url/$snapshot_id"
             echo "Deleted snapshot: $snapshot_description ($snapshot_id)"
           done
-
+          
           echo "Kept the most recent snapshot."
