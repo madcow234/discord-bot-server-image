@@ -38,7 +38,9 @@ jobs:
       - name: Packer Build
         run: |
           cd vultr
-          PACKER_OUTPUT=$(packer build main.pkr.hcl | tee /dev/tty)
+          PACKER_OUTPUT=$(mktemp)
+          packer build main.pkr.hcl | tee $PACKER_OUTPUT
+          PACKER_OUTPUT=$(cat $PACKER_OUTPUT)
           export PACKER_OUTPUT
 
       - name: Get Version Fingerprint
