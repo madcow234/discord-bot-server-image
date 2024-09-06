@@ -9,7 +9,7 @@ jobs:
   create_prod_snapshot:
     runs-on: ubuntu-latest
     env:
-      PKR_VAR_image_tag: prod-${{ github.event.pull_request.number }}
+      PKR_VAR_image_tag: prod-${{ github.event.release.tag_name }}
       PKR_VAR_vultr_api_key: ${{ secrets.VULTR_API_KEY }}
       HCP_CLIENT_ID: ${{ secrets.HCP_CLIENT_ID }}
       HCP_CLIENT_SECRET: ${{ secrets.HCP_CLIENT_SECRET }}
