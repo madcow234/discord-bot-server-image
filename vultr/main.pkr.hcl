@@ -34,6 +34,11 @@ source "vultr" "discord-bot-server" {
 }
 
 build {
+  hcp_packer_registry {
+    bucket_name = "discord-bot-server"
+    description = "Discord Bot Server image"
+  }
+
   sources = ["source.vultr.discord-bot-server"]
 
   provisioner "ansible" {
