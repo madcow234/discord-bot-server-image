@@ -8,9 +8,6 @@ on:
 jobs:
   create_test_snapshot:
     runs-on: ubuntu-latest
-    env:
-      PKR_VAR_image_tag: test-PR#${{ github.event.pull_request.number }}
-      PKR_VAR_vultr_api_key: ${{ secrets.VULTR_API_KEY }}
 
     steps:
       - name: Checkout code
@@ -30,4 +27,47 @@ jobs:
 
       - name: Packer Build
         run: |
-          cd vultr && packer build main.pkr.hcl
+          PKR_VAR_image_tag=test-PR#${{ github.event.pull_request.number }}
+          PKR_VAR_vultr_api_key=${{ secrets.VULTR_API_KEY }}
+          cd vultr && PACKER_OUTPUT=$(packer build main.pkr.hcl)
+          VERSION_FINGERPRINT=$(echo "$PACKER_OUTPUT" | grep -oP 'Tracking build on HCP Packer with fingerprint "\K[^"]+')
+          if [[ -z "$VERSION_FINGERPRINT" ]]; then
+            echo "Error: Unable to extract version fingerprint"
+            exit 1
+          else
+            echo "Version fingerprint: $VERSION_FINGERPRINT"
+            export VERSION_FINGERPRINT
+          fi
+
+      - name: Fetch Access Token
+        run: |
+          HCP_CLIENT_ID=${{ secrets.HCP_CLIENT_ID }}
+          HCP_CLIENT_SECRET=${{ secrets.HCP_CLIENT_SECRET }}
+          RESPONSE=$(curl --silent --location "https://auth.idp.hashicorp.com/oauth2/token" \
+            --header "Content-Type: application/x-www-form-urlencoded" \
+            --data-urlencode "client_id=$HCP_CLIENT_ID" \
+            --data-urlencode "client_secret=$HCP_CLIENT_SECRET" \
+            --data-urlencode "grant_type=client_credentials" \
+            --data-urlencode "audience=https://api.hashicorp.cloud")
+          HCP_ACCESS_TOKEN=$(echo $RESPONSE | jq -r '.access_token')
+          if [[ -z "$HCP_ACCESS_TOKEN" ]]; then
+            echo "Error: Unable to extract access token"
+            exit 1
+          else
+            echo "HCP access token: $HCP_ACCESS_TOKEN"
+            export HCP_ACCESS_TOKEN
+          fi
+          
+      - name: Update Assigned Version of Development Channel
+        run: |
+          HCP_ORGANIZATION_ID=${{ secrets.HCP_ORGANIZATION_ID }}
+          HCP_PROJECT_ID=${{ secrets.HCP_PROJECT_ID }}
+          HCP_PKR_BUCKET=discord-bot-server
+          HCP_PKR_CHANNEL=development
+          curl --location -X PATCH "https://api.cloud.hashicorp.com/packer/2023-01-01/organizations/$HCP_ORGANIZATION_ID/projects/$HCP_PROJECT_ID/buckets/$HCP_PKR_BUCKET/channels/$HCP_PKR_CHANNEL" \
+            --header "Authorization: Bearer $HCP_ACCESS_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data '{
+              "version_fingerprint": "'"$VERSION_FINGERPRINT"'",
+              "update_mask": "versionFingerprint"
+            }'
