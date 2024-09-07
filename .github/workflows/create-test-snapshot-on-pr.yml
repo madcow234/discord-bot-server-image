@@ -44,13 +44,7 @@ jobs:
           cd vultr
           packer_output=$(mktemp)
           packer build main.pkr.hcl | tee $packer_output
-          packer_output=$(cat $packer_output)
-          echo "packer_output=$packer_output" >> $GITHUB_OUTPUT
-
-      - name: Get Version Fingerprint
-        id: get_version_fingerprint
-        run: |
-          version_fingerprint=$(echo "${{ steps.packer_build.outputs.packer_output }}" | grep -oP 'Tracking build on HCP Packer with fingerprint "\K[^"]+')
+          version_fingerprint=$(grep -oP 'Tracking build on HCP Packer with fingerprint "\K[^"]+' $packer_output)
           if [[ -z "$version_fingerprint" ]]; then
             echo "Error: Unable to extract version fingerprint"
             exit 1
@@ -81,6 +75,6 @@ jobs:
             --header "Authorization: Bearer ${{ steps.fetch_access_token.outputs.hcp_access_token }}" \
             --header "Content-Type: application/json" \
             --data "{
-              'version_fingerprint': '"'${{ steps.get_version_fingerprint.outputs.version_fingerprint }}'"',
+              'version_fingerprint': '"'${{ steps.packer_build.outputs.version_fingerprint }}'"',
               'update_mask': 'versionFingerprint'
             }"
