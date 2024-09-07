@@ -45,7 +45,7 @@ jobs:
           packer_output=$(mktemp)
           packer build main.pkr.hcl | tee $packer_output
           packer_output=$(cat $packer_output)
-          echo "::set-output name=packer_output::$packer_output"
+          echo "packer_output=$packer_output" >> $GITHUB_OUTPUT
 
       - name: Get Version Fingerprint
         id: get_version_fingerprint
@@ -55,8 +55,7 @@ jobs:
             echo "Error: Unable to extract version fingerprint"
             exit 1
           else
-            echo "Version fingerprint: $version_fingerprint"
-            echo "::set-output name=version_fingerprint::$version_fingerprint"
+            echo "version_fingerprint=$version_fingerprint" >> $GITHUB_OUTPUT
           fi
 
       - name: Fetch Access Token
@@ -73,8 +72,8 @@ jobs:
             echo "Error: Unable to extract access token"
             exit 1
           else
-            echo "HCP access token: $hcp_access_token"
-            echo "::set-output name=hcp_access_token::$hcp_access_token"
+            echo "hcp_access_token=$hcp_access_token" >> $GITHUB_OUTPUT
+          fi
 
       - name: Update Assigned Version of Development Channel
         run: |
