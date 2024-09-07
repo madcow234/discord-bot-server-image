@@ -74,7 +74,7 @@ jobs:
           curl --location -X PATCH "https://api.cloud.hashicorp.com/packer/2023-01-01/organizations/$HCP_ORGANIZATION_ID/projects/$HCP_PROJECT_ID/buckets/$HCP_PKR_BUCKET/channels/$HCP_PKR_CHANNEL" \
             --header "Authorization: Bearer ${{ steps.fetch_access_token.outputs.hcp_access_token }}" \
             --header "Content-Type: application/json" \
-            --data "{
-              'version_fingerprint': '"'${{ steps.packer_build.outputs.version_fingerprint }}'"',
-              'update_mask': 'versionFingerprint'
-            }"
+            --data '{
+              "version_fingerprint": "'"${{ steps.packer_build.outputs.version_fingerprint }}"'",
+              "update_mask": "versionFingerprint"
+            }'
