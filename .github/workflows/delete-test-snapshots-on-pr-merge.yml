@@ -48,10 +48,11 @@ jobs:
 
       - name: Delete all but the most recent snapshot
         run: |
-          echo '${{ steps.prepare_snapshots_for_deletion.outputs.snapshots_to_delete }}' | jq -c '.[]' | while IFS= read -r snapshot; do
+          echo '${{ steps.prepare_snapshots_for_deletion.outputs.snapshots_to_delete }}' | jq -c '.[]' | while IFS= read -r $snapshot; do
             snapshot_id=$(echo '$snapshot' | jq -r '.id')
             snapshot_desc=$(echo '$snapshot' | jq -r '.description')
 
             curl -s -X DELETE -H "$AUTH_HEADER" "$VULTR_API_URL/$snapshot_id"
             echo "Deleted snapshot: $snapshot_desc ($snapshot_id)"
             echo "Kept the most recent snapshot."
+          done
