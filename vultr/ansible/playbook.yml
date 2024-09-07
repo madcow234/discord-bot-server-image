@@ -2,6 +2,10 @@
 - name: Configure Rocky Linux Server
   hosts: all
   become: yes
+  vars:
+    ansible_connection: ssh
+    ansible_transfer_method: scp
+    ansible_python_interpreter: /usr/bin/python3
   tasks:
     - name: Update and upgrade all packages
       ansible.builtin.yum:
