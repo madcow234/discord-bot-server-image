@@ -8,6 +8,9 @@ on:
 jobs:
   create_test_snapshot:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
     env:
       PKR_VAR_image_tag: test-PR#${{ github.event.pull_request.number }}
       PKR_VAR_vultr_api_key: ${{ secrets.VULTR_API_KEY }}
@@ -36,49 +39,49 @@ jobs:
           packer init main.pkr.hcl
 
       - name: Packer Build
+        id: packer_build
         run: |
           cd vultr
-          PACKER_OUTPUT=$(mktemp)
-          packer build main.pkr.hcl | tee $PACKER_OUTPUT
-          PACKER_OUTPUT=$(cat $PACKER_OUTPUT)
-          echo "PACKER_OUTPUT<<EOF" >> $GITHUB_ENV
-          echo "$PACKER_OUTPUT" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          packer_output=$(mktemp)
+          packer build main.pkr.hcl | tee $packer_output
+          packer_output=$(cat $packer_output)
+          echo "::set-output name=packer_output::$packer_output"
 
       - name: Get Version Fingerprint
+        id: get_version_fingerprint
         run: |
-          VERSION_FINGERPRINT=$(echo "$PACKER_OUTPUT" | grep -oP 'Tracking build on HCP Packer with fingerprint "\K[^"]+')
-          if [[ -z "$VERSION_FINGERPRINT" ]]; then
+          version_fingerprint=$(echo "${{ steps.packer_build.outputs.packer_output }}" | grep -oP 'Tracking build on HCP Packer with fingerprint "\K[^"]+')
+          if [[ -z "$version_fingerprint" ]]; then
             echo "Error: Unable to extract version fingerprint"
             exit 1
           else
-            echo "Version fingerprint: $VERSION_FINGERPRINT"
-            echo "VERSION_FINGERPRINT=$VERSION_FINGERPRINT" >> $GITHUB_ENV
+            echo "Version fingerprint: $version_fingerprint"
+            echo "::set-output name=version_fingerprint::$version_fingerprint"
           fi
 
       - name: Fetch Access Token
+        id: fetch_access_token
         run: |
-          RESPONSE=$(curl --silent --location "https://auth.idp.hashicorp.com/oauth2/token" \
+          response=$(curl --silent --location "https://auth.idp.hashicorp.com/oauth2/token" \
             --header "Content-Type: application/x-www-form-urlencoded" \
             --data-urlencode "client_id=$HCP_CLIENT_ID" \
             --data-urlencode "client_secret=$HCP_CLIENT_SECRET" \
             --data-urlencode "grant_type=client_credentials" \
             --data-urlencode "audience=https://api.hashicorp.cloud")
-          HCP_ACCESS_TOKEN=$(echo $RESPONSE | jq -r '.access_token')
-          if [[ -z "$HCP_ACCESS_TOKEN" ]]; then
+          hcp_access_token=$(echo $response | jq -r '.access_token')
+          if [[ -z "$hcp_access_token" ]]; then
             echo "Error: Unable to extract access token"
             exit 1
           else
-            echo "HCP access token: $HCP_ACCESS_TOKEN"
-            echo "HCP_ACCESS_TOKEN=$HCP_ACCESS_TOKEN" >> $GITHUB_ENV
-          fi
-          
+            echo "HCP access token: $hcp_access_token"
+            echo "::set-output name=hcp_access_token::$hcp_access_token"
+
       - name: Update Assigned Version of Development Channel
         run: |
           curl --location -X PATCH "https://api.cloud.hashicorp.com/packer/2023-01-01/organizations/$HCP_ORGANIZATION_ID/projects/$HCP_PROJECT_ID/buckets/$HCP_PKR_BUCKET/channels/$HCP_PKR_CHANNEL" \
-            --header "Authorization: Bearer $HCP_ACCESS_TOKEN" \
+            --header "Authorization: Bearer ${{ steps.fetch_access_token.outputs.hcp_access_token }}" \
             --header "Content-Type: application/json" \
-            --data '{
-              "version_fingerprint": "'"$VERSION_FINGERPRINT"'",
-              "update_mask": "versionFingerprint"
-            }'
+            --data "{
+              'version_fingerprint': '"'${{ steps.get_version_fingerprint.outputs.version_fingerprint }}'"',
+              'update_mask': 'versionFingerprint'
+            }"
