@@ -27,7 +27,7 @@ jobs:
 
       - name: Check snapshot count
         run: |
-          snapshot_count=$(echo "${{ steps.fetch_snapshots.outputs.snapshots }}" | jq 'length')
+          snapshot_count=$(echo '${{ steps.fetch_snapshots.outputs.snapshots }}' | jq 'length')
           echo "Snapshot count: $snapshot_count"
           if [[ $snapshot_count -le 1 ]]; then
             echo "No snapshots to delete, or only one snapshot found."
@@ -36,18 +36,18 @@ jobs:
       - name: Sort snapshots by timestamp
         id: sort_snapshots
         run: |
-          snapshots_sorted=$(echo "${{ steps.fetch_snapshots.outputs.snapshots }}" | jq -c 'sort_by(.description | capture("\\[.*\\] (?<date>.*) UTC") | .date)')
+          snapshots_sorted=$(echo '${{ steps.fetch_snapshots.outputs.snapshots }}' | jq -c 'sort_by(.description | capture("\\[.*\\] (?<date>.*) UTC") | .date)')
           echo "snapshots_sorted=$snapshots_sorted" >> $GITHUB_OUTPUT
 
       - name: Prepare snapshots for deletion
         id: prepare_snapshots_for_deletion
         run: |
-          snapshots_to_delete=$(echo "${{ steps.sort_snapshots.outputs.snapshots_sorted }}" | jq -c '.[0:-1]')
+          snapshots_to_delete=$(echo '${{ steps.sort_snapshots.outputs.snapshots_sorted }}' | jq -c '.[0:-1]')
           echo "snapshots_to_delete=$snapshots_to_delete" >> $GITHUB_OUTPUT
 
       - name: Delete all but the most recent snapshot
         run: |
-          echo "${{ steps.prepare_snapshots_for_deletion.outputs.snapshots_to_delete }}" | jq -c '.[]' | while IFS= read -r snapshot; do
+          echo '${{ steps.prepare_snapshots_for_deletion.outputs.snapshots_to_delete }}' | jq -c '.[]' | while IFS= read -r snapshot; do
             snapshot_id=$(echo "$snapshot" | jq -r '.id')
             snapshot_desc=$(echo "$snapshot" | jq -r '.description')
 
