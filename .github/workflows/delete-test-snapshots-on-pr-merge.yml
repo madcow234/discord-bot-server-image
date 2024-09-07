@@ -23,7 +23,7 @@ jobs:
         id: fetch_snapshots
         run: |
           snapshots=$(curl -s -H "$AUTH_HEADER" "$VULTR_API_URL" | jq -c --arg prefix "$SNAPSHOT_DESCRIPTION" '.snapshots | map(select(.description | startswith($prefix)))')
-          echo "::set-output name=snapshots::$snapshots"
+          echo "snapshots=$snapshots" >> $GITHUB_OUTPUT
 
       - name: Check snapshot count
         run: |
@@ -37,13 +37,13 @@ jobs:
         id: sort_snapshots
         run: |
           snapshots_sorted=$(echo "${{ steps.fetch_snapshots.outputs.snapshots }}" | jq -c 'sort_by(.description | capture("\\[.*\\] (?<date>.*) UTC") | .date)')
-          echo "::set-output name=snapshots_sorted::$snapshots_sorted"
+          echo "snapshots_sorted=$snapshots_sorted" >> $GITHUB_OUTPUT
 
       - name: Prepare snapshots for deletion
         id: prepare_snapshots_for_deletion
         run: |
           snapshots_to_delete=$(echo "${{ steps.sort_snapshots.outputs.snapshots_sorted }}" | jq -c '.[0:-1]')
-          echo "::set-output name=snapshots_to_delete::$snapshots_to_delete"
+          echo "snapshots_to_delete=$snapshots_to_delete" >> $GITHUB_OUTPUT
 
       - name: Delete all but the most recent snapshot
         run: |
