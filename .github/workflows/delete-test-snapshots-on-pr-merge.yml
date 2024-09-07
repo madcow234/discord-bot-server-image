@@ -32,6 +32,7 @@ jobs:
           if [[ $snapshot_count -le 1 ]]; then
             echo "No snapshots to delete, or only one snapshot found."
             exit 0
+          fi
 
       - name: Sort snapshots by timestamp
         id: sort_snapshots
