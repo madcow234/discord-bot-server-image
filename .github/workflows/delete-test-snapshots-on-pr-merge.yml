@@ -9,39 +9,48 @@ jobs:
   delete_test_snapshots:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+
+    env:
+      VULTR_API_URL: https://api.vultr.com/v2/snapshots
+      AUTH_HEADER: "Authorization: Bearer ${{ secrets.VULTR_API_KEY }}"
+      SNAPSHOT_DESCRIPTION: Discord Bot Server [test-PR#${{ github.event.pull_request.number }}]
 
     steps:
-      - name: Remove Snapshot(s)
+      - name: Fetch snapshots for this PR
+        id: fetch_snapshots
         run: |
-          vultr_api_url="https://api.vultr.com/v2/snapshots"
-          auth_header="Authorization: Bearer ${{ secrets.VULTR_API_KEY }}"
-          pr_number=${{ github.event.pull_request.number }}
-          snapshot_desc="Discord Bot Server [test-PR#$pr_number]"
+          snapshots=$(curl -s -H "$AUTH_HEADER" "$VULTR_API_URL" | jq -c --arg prefix "$SNAPSHOT_DESCRIPTION" '.snapshots | map(select(.description | startswith($prefix)))')
+          echo "snapshots=$snapshots" >> $GITHUB_OUTPUT
 
-          # Get all snapshots for this PR and extract the timestamp from the description
-          snapshots=$(curl -s -H "$auth_header" "$vultr_api_url" | jq -c --arg prefix "$snapshot_desc" '
-            .snapshots | map(select(.description | startswith($prefix)))')
-
-          # Check if there are multiple snapshots
-          snapshot_count=$(echo "$snapshots" | jq 'length')
+      - name: Check snapshot count
+        run: |
+          snapshot_count=$(echo "${{ steps.fetch_snapshots.outputs.snapshots }}" | jq 'length')
+          echo "Snapshot count: $snapshot_count"
           if [[ $snapshot_count -le 1 ]]; then
             echo "No snapshots to delete, or only one snapshot found."
             exit 0
-          fi
 
-          # Sort the snapshots based on the timestamp part in the description
-          snapshots_sorted=$(echo "$snapshots" | jq -c 'sort_by(.description | capture("\\[.*\\] (?<date>.*) UTC") | .date)')
+      - name: Sort snapshots by timestamp
+        id: sort_snapshots
+        run: |
+          snapshots_sorted=$(echo "${{ steps.fetch_snapshots.outputs.snapshots }}" | jq -c 'sort_by(.description | capture("\\[.*\\] (?<date>.*) UTC") | .date)')
+          echo "snapshots_sorted=$snapshots_sorted" >> $GITHUB_OUTPUT
 
-          # Get all but the most recent snapshot
-          snapshots_to_delete=$(echo "$snapshots_sorted" | jq -c '.[0:-1]')
+      - name: Prepare snapshots for deletion
+        id: prepare_snapshots_for_deletion
+        run: |
+          snapshots_to_delete=$(echo "${{ steps.sort_snapshots.outputs.snapshots_sorted }}" | jq -c '.[0:-1]')
+          echo "snapshots_to_delete=$snapshots_to_delete" >> $GITHUB_OUTPUT
 
-          # Loop through each snapshot (except the most recent) and delete it
-          echo "$snapshots_to_delete" | jq -c '.[]' | while IFS= read -r snapshot; do
+      - name: Delete all but the most recent snapshot
+        run: |
+          echo "${{ steps.prepare_snapshots_for_deletion.outputs.snapshots_to_delete }}" | jq -c '.[]' | while IFS= read -r snapshot; do
             snapshot_id=$(echo "$snapshot" | jq -r '.id')
-            snapshot_description=$(echo "$snapshot" | jq -r '.description')
-          
-            curl -s -X DELETE -H "$auth_header" "$vultr_api_url/$snapshot_id"
-            echo "Deleted snapshot: $snapshot_description ($snapshot_id)"
-          done
-          
-          echo "Kept the most recent snapshot."
+            snapshot_desc=$(echo "$snapshot" | jq -r '.description')
+
+            curl -s -X DELETE -H "$AUTH_HEADER" "$VULTR_API_URL/$snapshot_id"
+            echo "Deleted snapshot: $snapshot_desc ($snapshot_id)"
+            echo "Kept the most recent snapshot."
