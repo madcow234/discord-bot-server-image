@@ -43,3 +43,14 @@
         name: docker
         enabled: yes
         state: started
+
+    - name: Check if Docker Swarm is initialized
+      ansible.builtin.command:
+        cmd: docker info
+      register: swarm_status
+      changed_when: false
+
+    - name: Initialize Docker Swarm
+      ansible.builtin.command:
+        cmd: docker swarm init
+      when: "'Swarm: inactive' in swarm_status.stdout"
