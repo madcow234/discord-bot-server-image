@@ -83,6 +83,14 @@
         line: 'DOCKER_CONFIG=/etc/docker/bot-manager'
         create: yes
 
+    - name: Add DOCKER_CONFIG line after Defaults env_keep line
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers
+        insertafter: '^#\s*Defaults\s+env_keep\s*\+=\s*"HOME"'
+        line: 'Defaults env_keep += "DOCKER_CONFIG"'
+        state: present
+        validate: '/usr/sbin/visudo -cf %s'
+
     - name: Ensure /opt/discord-bots and bot subdirectory exist
       ansible.builtin.file:
         path: "/opt/discord-bots/{{ item }}"
