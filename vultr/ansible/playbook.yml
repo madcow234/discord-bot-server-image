@@ -77,12 +77,11 @@
         group: bot-manager
         mode: '0750'
 
-    - name: Set DOCKER_CONFIG environment variable for bot-manager
-      ansible.builtin.copy:
-        dest: /etc/profile.d/docker_config.sh
-        content: |
-          export DOCKER_CONFIG=/etc/docker/bot-manager
-        mode: '0644'
+    - name: Add DOCKER_CONFIG to /etc/environment
+      ansible.builtin.lineinfile:
+        path: /etc/environment
+        line: 'DOCKER_CONFIG=/etc/docker/bot-manager'
+        create: yes
 
     - name: Ensure /opt/discord-bots and bot subdirectory exist
       ansible.builtin.file:
