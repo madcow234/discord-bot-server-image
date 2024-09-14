@@ -13,12 +13,6 @@
         state: latest
         update_cache: yes
 
-    - name: Create a new user called discord-bot-server
-      ansible.builtin.user:
-        name: discord-bot-server
-        state: present
-        create_home: yes
-
     - name: Check if Docker repository is already present
       ansible.builtin.stat:
         path: /etc/yum.repos.d/docker-ce.repo
@@ -54,3 +48,34 @@
       ansible.builtin.command:
         cmd: docker swarm init
       when: "'Swarm: inactive' in swarm_status.stdout"
+
+    - name: Remove default linuxuser user if it exists
+      ansible.builtin.user:
+        name: linuxuser
+        state: absent
+        remove: yes
+
+    - name: Ensure discord-bot-user exists
+      ansible.builtin.user:
+        name: bot-manager
+        state: present
+        create_home: no
+        groups: docker
+        append: yes
+        shell: /usr/sbin/nologin
+
+    - name: Remove bot-manager's home directory if it exists
+      ansible.builtin.file:
+        path: /home/bot-manager
+        state: absent
+
+    - name: Ensure /opt/discord-bots and bot subdirectory exist
+      ansible.builtin.file:
+        path: "/opt/discord-bots/{{ item }}"
+        state: directory
+        mode: '0700'
+        owner: bot-manager
+        group: bot-manager
+      loop:
+        - ""
+        - "ics-bot"
