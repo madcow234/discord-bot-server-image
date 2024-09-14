@@ -69,6 +69,21 @@
         path: /home/bot-manager
         state: absent
 
+    - name: Create Docker config directory for bot-manager
+      ansible.builtin.file:
+        path: /etc/docker/bot-manager
+        state: directory
+        owner: bot-manager
+        group: bot-manager
+        mode: '0750'
+
+    - name: Set DOCKER_CONFIG environment variable for bot-manager
+      ansible.builtin.copy:
+        dest: /etc/profile.d/docker_config.sh
+        content: |
+          export DOCKER_CONFIG=/etc/docker/bot-manager
+        mode: '0644'
+
     - name: Ensure /opt/discord-bots and bot subdirectory exist
       ansible.builtin.file:
         path: "/opt/discord-bots/{{ item }}"
