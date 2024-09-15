@@ -22,7 +22,7 @@ jobs:
       - name: Fetch snapshots for this PR
         id: fetch_snapshots
         run: |
-          snapshots=$(curl -s -H "$AUTH_HEADER" "$VULTR_API_URL" | jq -c --arg prefix "$SNAPSHOT_DESCRIPTION" '.snapshots | map(select(.description | startswith($prefix)))')
+          snapshots=$(curl -s -H "$AUTH_HEADER" "$VULTR_API_URL" | jq -c --arg desc "$SNAPSHOT_DESCRIPTION" '.snapshots | map(select(.description == $desc))')
           echo "snapshots=$snapshots" >> $GITHUB_OUTPUT
 
       - name: Check snapshot count
