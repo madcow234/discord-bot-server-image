@@ -27,7 +27,7 @@ source "vultr" "discord-bot-server" {
   os_id = 1869  # Rocky Linux 9 x64
   plan_id = "vhp-1c-1gb-intel"
   region_id = "dfw"  # Dallas, Texas
-  snapshot_description = "Discord Bot Server [${var.image_tag}] ${formatdate("YYYY-MM-DD HH:mm", timestamp())} UTC"
+  snapshot_description = "Discord Bot Server [${var.image_tag}]"
   state_timeout = "15m"
   ssh_username = "root"
   ssh_timeout = "5m"
