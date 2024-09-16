@@ -27,10 +27,12 @@
         line: 'PasswordAuthentication no'
         state: present
 
-    - name: Ensure 50-cloud-init.conf is removed
-      ansible.builtin.file:
+    - name: Ensure PasswordAuthentication is disabled for root
+      ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config.d/50-cloud-init.conf
-        state: absent
+        regexp: '^PasswordAuthentication yes'
+        line: 'PasswordAuthentication no'
+        state: present
 
     - name: Check if Docker repository is already present
       ansible.builtin.stat:
