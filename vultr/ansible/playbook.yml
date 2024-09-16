@@ -27,16 +27,16 @@
         line: 'PasswordAuthentication no'
         state: present
 
-    - name: Ensure /etc/cloud/cloud.cfg.d directory exists
+    - name: Ensure /etc/ssh/sshd_config.d directory exists
       ansible.builtin.file:
-        path: /etc/cloud/cloud.cfg.d
+        path: /etc/ssh/sshd_config.d
         owner: root
         group: root
         mode: '0755'
 
-    - name: Create or update cloud-init configuration to disable SSH
+    - name: Add override file to disable SSH password login
       ansible.builtin.copy:
-        dest: /etc/cloud/cloud.cfg.d/00-disable-ssh-password.conf
+        dest: /etc/ssh/sshd_config.d/00-disable-ssh-password.conf
         content: |
           PasswordAuthentication no
         owner: root
