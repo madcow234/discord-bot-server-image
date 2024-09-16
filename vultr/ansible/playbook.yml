@@ -13,20 +13,6 @@
         state: latest
         update_cache: yes
 
-    - name: Disable PermitRootLogin with password
-      ansible.builtin.lineinfile:
-        path: /etc/ssh/sshd_config
-        regexp: '^PermitRootLogin yes'
-        line: 'PermitRootLogin without-password'
-        state: present
-
-    - name: Ensure PasswordAuthentication is disabled for root
-      ansible.builtin.lineinfile:
-        path: /etc/ssh/sshd_config
-        regexp: '^#?PasswordAuthentication'
-        line: 'PasswordAuthentication no'
-        state: present
-
     - name: Ensure /etc/ssh/sshd_config.d directory exists
       ansible.builtin.file:
         path: /etc/ssh/sshd_config.d
@@ -39,6 +25,7 @@
         dest: /etc/ssh/sshd_config.d/00-disable-ssh-password.conf
         content: |
           PasswordAuthentication no
+          ChallengeResponseAuthentication no
         owner: root
         group: root
         mode: '0644'
