@@ -13,6 +13,23 @@
         state: latest
         update_cache: yes
 
+    - name: Ensure /etc/ssh/sshd_config.d directory exists
+      ansible.builtin.file:
+        path: /etc/ssh/sshd_config.d
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Add override file to disable SSH password login
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/00-disable-ssh-password.conf
+        content: |
+          PasswordAuthentication no
+          ChallengeResponseAuthentication no
+        owner: root
+        group: root
+        mode: '0644'
+
     - name: Check if Docker repository is already present
       ansible.builtin.stat:
         path: /etc/yum.repos.d/docker-ce.repo
