@@ -27,6 +27,12 @@
         line: 'PasswordAuthentication no'
         state: present
 
+    - name: Ensure /etc/cloud/cloud.cfg.d directory exists
+      file:
+        path: /etc/cloud/cloud.cfg.d
+        state: directory
+        mode: '0755'
+
     - name: Create or update cloud-init configuration to disable SSH
       ansible.builtin.blockinfile:
         path: /etc/cloud/cloud.cfg.d/99-disable-cloud-init-ssh.conf
