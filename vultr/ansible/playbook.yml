@@ -30,28 +30,18 @@
     - name: Ensure /etc/cloud/cloud.cfg.d directory exists
       ansible.builtin.file:
         path: /etc/cloud/cloud.cfg.d
-        state: directory
         owner: root
         group: root
         mode: '0755'
 
     - name: Create or update cloud-init configuration to disable SSH
       ansible.builtin.copy:
-        dest: /etc/cloud/cloud.cfg.d/99-disable-cloud-init-ssh.conf
+        dest: /etc/cloud/cloud.cfg.d/00-disable-ssh-password.conf
         content: |
-          # Disable cloud-init's SSH management
-          ssh_deletekeys: 0
-          ssh_genkeytypes: []
-          disable_root: 0
-          ssh_pwauth: 0
+          PasswordAuthentication no
         owner: root
         group: root
         mode: '0644'
-
-    - name: Remove cloud-init SSH config to prevent overriding
-      ansible.builtin.file:
-        path: /etc/ssh/sshd_config.d/50-cloud-init.conf
-        state: absent
 
     - name: Check if Docker repository is already present
       ansible.builtin.stat:
