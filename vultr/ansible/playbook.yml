@@ -13,6 +13,25 @@
         state: latest
         update_cache: yes
 
+    - name: Disable PermitRootLogin with password
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PermitRootLogin yes'
+        line: 'PermitRootLogin without-password'
+        state: present
+
+    - name: Ensure PasswordAuthentication is disabled for root
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+        state: present
+
+    - name: Ensure 50-cloud-init.conf is removed
+      ansible.builtin.file:
+        path: /etc/ssh/sshd_config.d/50-cloud-init.conf
+        state: absent
+
     - name: Check if Docker repository is already present
       ansible.builtin.stat:
         path: /etc/yum.repos.d/docker-ce.repo
