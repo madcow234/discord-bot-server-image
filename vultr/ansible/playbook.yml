@@ -40,7 +40,7 @@
       when: not docker_repo.stat.exists
 
     - name: Install Docker
-      ansible.builtin.yum:
+      ansible.builtin.package:
         name:
           - docker-ce
           - docker-ce-cli
@@ -107,6 +107,69 @@
         line: 'Defaults env_keep += "DOCKER_CONFIG"'
         state: present
         validate: '/usr/sbin/visudo -cf %s'
+
+    - name: Install pass utility
+      ansible.builtin.package:
+        name: pass
+        state: present
+
+    - name: Install GPG
+      ansible.builtin.package:
+        name: gnupg2
+        state: present
+
+    - name: Create GPG key configuration file
+      ansible.builtin.copy:
+        dest: /root/gpg_key_config
+        content: |
+          %echo Generating a Docker GPG key
+          Key-Type: RSA
+          Key-Length: 2048
+          Name-Real: DockerCredential
+          Name-Email: docker@example.com
+          Expire-Date: 0
+          %no-protection
+          %commit
+          %echo Done
+
+    - name: Generate GPG key non-interactively using config file
+      ansible.builtin.command:
+        cmd: gpg --batch --generate-key /root/gpg_key_config
+
+    - name: Get GPG key ID
+      ansible.builtin.command:
+        cmd: gpg --list-secret-keys --keyid-format LONG
+      register: gpg_keys
+
+    - name: Extract GPG key ID
+      ansible.builtin.set_fact:
+        gpg_key_id: "{{ gpg_keys.stdout.split('\n') | select('search', 'sec') | map('regex_search', '[A-F0-9]{16}') | first }}"
+
+    - name: Initialize pass with the GPG key
+      ansible.builtin.command:
+        cmd: pass init "{{ gpg_key_id }}"
+
+    - name: Download docker-credential-pass v0.8.2 binary from GitHub releases
+      ansible.builtin.get_url:
+        url: "https://github.com/docker/docker-credential-helpers/releases/download/v0.8.2/docker-credential-pass-v0.8.2.linux-amd64"
+        dest: /usr/local/bin/docker-credential-pass
+        mode: '0755'
+
+    - name: Ensure the docker-credential-pass binary is executable
+      ansible.builtin.file:
+        path: /usr/local/bin/docker-credential-pass
+        mode: '0755'
+
+    - name: Configure Docker to use the credential store in /etc/docker/bot-manager
+      ansible.builtin.copy:
+        content: |
+          {
+            "credsStore": "pass"
+          }
+        dest: /etc/docker/bot-manager/config.json
+        owner: bot-manager
+        group: bot-manager
+        mode: '0644'
 
     - name: Ensure /opt/discord-bots and bot subdirectory exist
       ansible.builtin.file:
