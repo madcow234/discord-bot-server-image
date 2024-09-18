@@ -20,6 +20,7 @@ jobs:
       HCP_PROJECT_ID: ${{ secrets.HCP_PROJECT_ID }}
       HCP_PKR_BUCKET: discord-bot-server
       HCP_PKR_CHANNEL: testing
+      HCP_TF_API_TOKEN: ${{ secrets.HCP_TF_API_TOKEN }}
 
     steps:
       - name: Checkout code
@@ -78,3 +79,45 @@ jobs:
               "version_fingerprint": "'"${{ steps.packer_build.outputs.version_fingerprint }}"'",
               "update_mask": "versionFingerprint"
             }'
+
+      - name: Get workspace ID by name
+        id: get_workspace_id
+        run: |
+          workspace_id=$(curl -s -X GET \
+            --header "Authorization: Bearer $HCP_TF_API_TOKEN" \
+            --header "Content-Type: application/vnd.api+json" \
+            "https://app.terraform.io/api/v2/organizations/madcow234/workspaces?search%5Bname%5D=discord-bot-server-image-testing" | jq -r '.data[0].id')
+          if [[ -z "$workspace_id" ]]; then
+            echo "Error: Unable to retrieve workspace ID"
+            exit 1
+          else
+            echo "workspace_id=$workspace_id" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Trigger HCP Terraform run
+        run: |
+          curl -X POST \
+            --header "Authorization: Bearer $HCP_TF_API_TOKEN" \
+            --header "Content-Type: application/vnd.api+json" \
+            https://app.terraform.io/api/v2/runs \
+            -d '{
+              "data": {
+                "attributes": {
+                  "is-destroy": false,
+                  "auto-apply": true
+                },
+                "type": "runs",
+                "relationships": {
+                  "workspace": {
+                    "data": {
+                      "type": "workspaces",
+                      "id": "'"${{ steps.get_workspace_id.outputs.workspace_id }}"'"
+                    }
+                  }
+                }
+              }
+            }'
+          if [[ $? -ne 0 ]]; then
+            echo "Error: Unable to trigger workspace run"
+            exit 1
+          fi
