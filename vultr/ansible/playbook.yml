@@ -3,6 +3,7 @@
   hosts: all
   become: yes
   vars:
+    ansible_remote_tmp: /tmp
     ansible_connection: ssh
     ansible_transfer_method: scp
     ansible_python_interpreter: /usr/bin/python3
@@ -12,23 +13,6 @@
         name: "*"
         state: latest
         update_cache: yes
-
-    - name: Ensure /etc/ssh/sshd_config.d directory exists
-      ansible.builtin.file:
-        path: /etc/ssh/sshd_config.d
-        owner: root
-        group: root
-        mode: '0755'
-
-    - name: Add override file to disable SSH password login
-      ansible.builtin.copy:
-        dest: /etc/ssh/sshd_config.d/00-disable-ssh-password.conf
-        content: |
-          PasswordAuthentication no
-          ChallengeResponseAuthentication no
-        owner: root
-        group: root
-        mode: '0644'
 
     - name: Check if Docker repository is already present
       ansible.builtin.stat:
@@ -46,25 +30,10 @@
           - docker-ce-cli
           - containerd.io
           - docker-compose-plugin
+          - gnupg2
+          - pass
         state: present
         update_cache: yes
-
-    - name: Enable Docker service
-      ansible.builtin.systemd:
-        name: docker
-        enabled: yes
-        state: started
-
-    - name: Check if Docker Swarm is initialized
-      ansible.builtin.command:
-        cmd: docker info
-      register: swarm_status
-      changed_when: false
-
-    - name: Initialize Docker Swarm
-      ansible.builtin.command:
-        cmd: docker swarm init
-      when: "'Swarm: inactive' in swarm_status.stdout"
 
     - name: Remove default linuxuser user if it exists
       ansible.builtin.user:
@@ -86,27 +55,78 @@
         path: /home/bot-manager
         state: absent
 
-    - name: Create Docker config directory for bot-manager
+    - name: Ensure required directories exist for bot-manager
       ansible.builtin.file:
-        path: /etc/docker/bot-manager
+        path: "{{ item.path }}"
         state: directory
         owner: bot-manager
         group: bot-manager
-        mode: '0750'
+        mode: "{{ item.mode }}"
+      loop:
+        - { path: '/etc/bot-manager', mode: '0750' }
+        - { path: '/etc/bot-manager/gpg', mode: '0700' }
+        - { path: '/etc/bot-manager/password-store', mode: '0700' }
+        - { path: '/etc/docker/bot-manager', mode: '0750' }
+        - { path: '/opt/discord-bots', mode: '0700' }
+        - { path: '/opt/discord-bots/ics-bot', mode: '0700' }
 
-    - name: Add DOCKER_CONFIG to /etc/environment
+    - name: Ensure /etc/ssh/sshd_config.d directory exists
+      ansible.builtin.file:
+        path: /etc/ssh/sshd_config.d
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Add override file to disable SSH password login
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/00-disable-ssh-password.conf
+        content: |
+          PasswordAuthentication no
+          ChallengeResponseAuthentication no
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Enable Docker service
+      ansible.builtin.systemd:
+        name: docker
+        enabled: yes
+        state: started
+
+    - name: Check if Docker Swarm is initialized
+      ansible.builtin.command:
+        cmd: docker info
+      register: swarm_status
+      changed_when: false
+
+    - name: Initialize Docker Swarm
+      ansible.builtin.command:
+        cmd: docker swarm init
+      when: "'Swarm: inactive' in swarm_status.stdout"
+
+    - name: Ensure environment variables are present in /etc/environment
       ansible.builtin.lineinfile:
         path: /etc/environment
-        line: 'DOCKER_CONFIG=/etc/docker/bot-manager'
-        create: yes
+        regexp: "^{{ item.name }}="
+        line: "{{ item.name }}={{ item.value }}"
+        state: present
+      loop:
+        - { name: 'GNUPGHOME', value: '/etc/bot-manager/gpg' }
+        - { name: 'PASSWORD_STORE_DIR', value: '/etc/bot-manager/password-store' }
+        - { name: 'DOCKER_CONFIG', value: '/etc/docker/bot-manager' }
 
-    - name: Add DOCKER_CONFIG line after Defaults env_keep line
+    - name: Add environment variables to sudoers env_keep
+      become: yes
       ansible.builtin.lineinfile:
         path: /etc/sudoers
         insertafter: '^#\s*Defaults\s+env_keep\s*\+=\s*"HOME"'
-        line: 'Defaults env_keep += "DOCKER_CONFIG"'
+        line: 'Defaults env_keep += "{{ item }}"'
         state: present
         validate: '/usr/sbin/visudo -cf %s'
+      loop:
+        - "GNUPGHOME"
+        - "PASSWORD_STORE_DIR"
+        - "DOCKER_CONFIG"
 
     - name: Add /usr/local/bin to sudoers secure_path
       ansible.builtin.lineinfile:
@@ -116,19 +136,9 @@
         state: present
         validate: '/usr/sbin/visudo -cf %s'
 
-    - name: Install pass utility
-      ansible.builtin.package:
-        name: pass
-        state: present
-
-    - name: Install GPG
-      ansible.builtin.package:
-        name: gnupg2
-        state: present
-
     - name: Create GPG key configuration file
       ansible.builtin.copy:
-        dest: /root/gpg_key_config
+        dest: /etc/bot-manager/gpg/gpg_key_config
         content: |
           %echo Generating a Docker GPG key
           Key-Type: RSA
@@ -140,33 +150,47 @@
           %commit
           %echo Done
 
-    - name: Generate GPG key non-interactively using config file
-      ansible.builtin.command:
-        cmd: gpg --batch --generate-key /root/gpg_key_config
-
-    - name: Get GPG key ID
+    - name: Check if GPG key exists for bot-manager
+      become_user: bot-manager
       ansible.builtin.command:
         cmd: gpg --list-secret-keys --keyid-format LONG
       register: gpg_keys
+      failed_when: gpg_keys.rc != 0
+      changed_when: false
+
+    - name: Generate GPG key for bot-manager non-interactively using config file
+      become_user: bot-manager
+      ansible.builtin.command:
+        cmd: gpg --batch --generate-key /etc/bot-manager/gpg/gpg_key_config
+      when: gpg_keys.stdout.find("bot-manager") == -1
+
+    - name: Get GPG key ID for bot-manager
+      become_user: bot-manager
+      ansible.builtin.command:
+        cmd: gpg --list-secret-keys --keyid-format LONG
+      register: gpg_keys
+      changed_when: false
 
     - name: Extract GPG key ID
       ansible.builtin.set_fact:
         gpg_key_id: "{{ gpg_keys.stdout.split('\n') | select('search', 'sec') | map('regex_search', '[A-F0-9]{16}') | first }}"
 
-    - name: Initialize pass for bot-manager with GPG key
-      ansible.builtin.command: pass init "{{ gpg_key_id }}"
+    - name: Check if pass is initialized
       become_user: bot-manager
-      when: gpg_key_id is defined
+      ansible.builtin.stat:
+        path: /etc/bot-manager/password-store/.gpg-id
+      register: pass_initialized
+      changed_when: false
+
+    - name: Initialize pass for bot-manager with GPG key
+      become_user: bot-manager
+      ansible.builtin.command: bash -c "cd /etc/bot-manager && pass init {{ gpg_key_id }}"
+      when: not pass_initialized.stat.exists
 
     - name: Download docker-credential-pass v0.8.2 binary from GitHub releases
       ansible.builtin.get_url:
         url: "https://github.com/docker/docker-credential-helpers/releases/download/v0.8.2/docker-credential-pass-v0.8.2.linux-amd64"
         dest: /usr/local/bin/docker-credential-pass
-        mode: '0755'
-
-    - name: Ensure the docker-credential-pass binary is executable
-      ansible.builtin.file:
-        path: /usr/local/bin/docker-credential-pass
         mode: '0755'
 
     - name: Configure Docker to use the credential store in /etc/docker/bot-manager
@@ -179,14 +203,3 @@
         owner: bot-manager
         group: bot-manager
         mode: '0644'
-
-    - name: Ensure /opt/discord-bots and bot subdirectory exist
-      ansible.builtin.file:
-        path: "/opt/discord-bots/{{ item }}"
-        state: directory
-        mode: '0700'
-        owner: bot-manager
-        group: bot-manager
-      loop:
-        - ""
-        - "ics-bot"
