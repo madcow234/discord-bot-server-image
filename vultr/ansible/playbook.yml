@@ -153,9 +153,10 @@
       ansible.builtin.set_fact:
         gpg_key_id: "{{ gpg_keys.stdout.split('\n') | select('search', 'sec') | map('regex_search', '[A-F0-9]{16}') | first }}"
 
-    - name: Initialize pass with the GPG key
-      ansible.builtin.command:
-        cmd: pass init "{{ gpg_key_id }}"
+    - name: Initialize pass for bot-manager with GPG key
+      ansible.builtin.command: pass init "{{ gpg_key_id }}"
+      become_user: bot-manager
+      when: gpg_key_id is defined
 
     - name: Download docker-credential-pass v0.8.2 binary from GitHub releases
       ansible.builtin.get_url:
